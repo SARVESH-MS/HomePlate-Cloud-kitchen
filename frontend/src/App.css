@@ -1,0 +1,7 @@
+/* src/index.css or src/App.css */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Add any other custom CSS below this */
