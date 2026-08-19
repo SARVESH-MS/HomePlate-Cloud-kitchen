@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { 
     ShoppingCart, Search, Plus, Minus, Trash2, LogOut, TrendingUp, Package, 
-    DollarSign, Star, X, Clock, MapPin, MessageCircle, ArrowLeft, Bot
+    DollarSign, Star, X, Clock, MapPin, ArrowLeft
 } from 'lucide-react';
 
 // --- API Imports (Updated) ---
@@ -144,7 +144,7 @@ const DishDetailPage = ({ dish, onAddToCart, onBack }) => {
                             <span className="text-3xl font-bold text-orange-600">₹{dish.price}</span>
                             <div className="flex items-center gap-2">
                                 <Star className='w-5 h-5 text-yellow-500 fill-yellow-500' />
-                                <span className="font-bold text-xl text-yellow-500">{dish.rating.toFixed(1)}</span>
+                                <span className="font-bold text-xl text-yellow-500">{stars}</span>
                             </div>
                         </div>
                         <div className='space-y-3 mb-6 text-base text-gray-600'>
@@ -1650,13 +1650,6 @@ const SellerAboutPage = ({ currentUser, onShowNotification }) => {
     );
 };
 
-// --- COMPONENT: CustomerSellerAboutPage (Info for Customers) ---
-const CustomerSellerAboutPage = () => (
-    <div className="bg-gray-100 min-h-screen py-8">
-        {/* ... (This page is static and doesn't need changes) ... */}
-    </div>
-);
-
 // --- COMPONENT: Footer ---
 const Footer = () => (
     <footer className="bg-orange-500 text-white py-12 mt-12">
@@ -1695,8 +1688,13 @@ function App() {
     const [selectedDishId, setSelectedDishId] = useState(null);
     const [orderToReview, setOrderToReview] = useState(null); // For review flow
 
+    const showNotification = useCallback((message) => {
+        setNotification(message);
+        setTimeout(() => setNotification(''), 3000);
+    }, []);
+
     // --- GLOBAL DATA FETCHING ---
-    const fetchDishes = async () => {
+    const fetchDishes = useCallback(async () => {
         try {
             setIsLoading(true);
             const response = await dishAPI.getAllDishes();
@@ -1707,7 +1705,7 @@ function App() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [showNotification]);
 
     // --- AUTHENTICATION ---
     useEffect(() => {
@@ -1725,7 +1723,7 @@ function App() {
             }
         }
         fetchDishes();
-    }, []);
+    }, [fetchDishes]);
 
     useEffect(() => {
         localStorage.setItem('homeplateCart', JSON.stringify(cart));
@@ -1753,12 +1751,6 @@ function App() {
         setCurrentPage('home');
         setMobileMenuOpen(false);
         showNotification('Logged out successfully');
-    };
-
-    // --- HELPER FUNCTIONS ---
-    const showNotification = (message) => {
-        setNotification(message);
-        setTimeout(() => setNotification(''), 3000);
     };
 
     // --- CART FUNCTIONS ---
