@@ -4,7 +4,7 @@ import axios from 'axios';
 
 // Create an 'instance' of axios with the base URL of your backend
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api', // This matches your server.js
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
 });
 
 // This "interceptor" automatically adds the auth token to every request
@@ -24,6 +24,16 @@ export const authAPI = {
   customerRegister: (signupData) => api.post('/customer/register', signupData),
   sellerLogin: (credentials) => api.post('/seller/login', credentials),
   sellerRegister: (signupData) => api.post('/seller/register', signupData),
+  deliveryLogin: (credentials) => api.post('/delivery/login', credentials),
+  deliveryRegister: (signupData) => api.post('/delivery/register', signupData),
+};
+
+export const deliveryAPI = {
+  availableOrders: () => api.get('/delivery/orders/available'),
+  myOrders: () => api.get('/delivery/orders/mine'),
+  acceptOrder: (orderId) => api.post(`/delivery/orders/${orderId}/accept`),
+  markDelivered: (orderId, otp) => api.patch(`/delivery/orders/${orderId}/delivered`, { otp }),
+  updateLocation: (orderId, latitude, longitude) => api.patch(`/delivery/orders/${orderId}/location`, { latitude, longitude }),
 };
 
 // --- Dish API ---
@@ -46,6 +56,7 @@ export const orderAPI = {
   getCustomerOrders: () => api.get('/customer/orders'),
   getSellerOrders: () => api.get('/seller/orders'),
   updateOrderStatus: (orderId, status) => api.patch(`/orders/${orderId}/status`, { status }),
+  getTracking: (orderId) => api.get(`/orders/${orderId}/tracking`),
 };
 
 // --- Seller API (Stats & Logo) ---
@@ -69,6 +80,7 @@ export const reviewAPI = {
 // --- Chatbot API ---
 export const chatbotAPI = {
     askBot: (message) => api.post('/chatbot', { message }),
+    getHistory: () => api.get('/chatbot/history'),
 };
 
 // --- Recommendation API ---

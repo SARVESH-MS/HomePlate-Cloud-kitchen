@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 import { 
     ShoppingCart, Search, Plus, Minus, Trash2, LogOut, TrendingUp, Package, 
     DollarSign, Star, X, Clock, MapPin, MessageCircle, ArrowLeft, Bot
@@ -6,11 +8,14 @@ import {
 
 // --- API Imports (Updated) ---
 import { 
-    authAPI, dishAPI, orderAPI, sellerAPI, reviewAPI, recommendationAPI 
+    authAPI, dishAPI, orderAPI, sellerAPI, reviewAPI, recommendationAPI, deliveryAPI
 } from './services/api';
 
 // --- NEW COMPONENT IMPORT ---
 import Chatbot from './components/Chatbot';
+
+const backendOrigin = (process.env.REACT_APP_API_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+const foodImageUrl = (image) => image?.startsWith('/uploads/') ? `${backendOrigin}${image}` : image;
 
 // --- 1. UI FIX: FoodTypeIndicator (Smaller, No Text) ---
 const FoodTypeIndicator = ({ type }) => {
@@ -25,6 +30,48 @@ const FoodTypeIndicator = ({ type }) => {
             </div>
         </div>
     );
+};
+
+const RecenterMap = ({ latitude, longitude }) => {
+    const map = useMap();
+    useEffect(() => { map.setView([latitude, longitude], map.getZoom(), { animate: true }); }, [latitude, longitude, map]);
+    return null;
+};
+
+const LiveDeliveryMap = ({ location }) => {
+    if (!location?.latitude || !location?.longitude) return null;
+    const position = [location.latitude, location.longitude];
+    return <div className="mt-3 overflow-hidden rounded-xl border border-blue-200">
+        <MapContainer center={position} zoom={15} scrollWheelZoom={false} style={{ height: '260px', width: '100%' }}>
+            <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <RecenterMap latitude={location.latitude} longitude={location.longitude} />
+            <CircleMarker center={position} radius={13} pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#2563eb', fillOpacity: 1 }}><Popup>Delivery partner is here<br />Updated: {new Date(location.updatedAt).toLocaleTimeString()}</Popup></CircleMarker>
+        </MapContainer>
+    </div>;
+};
+
+const OrderTrackingCard = ({ order }) => {
+    const [tracking, setTracking] = useState({ status: order.status, deliveryLocation: order.deliveryLocation });
+    useEffect(() => {
+        let isMounted = true;
+        const refreshTracking = async () => {
+            try {
+                const response = await orderAPI.getTracking(order._id);
+                if (isMounted) setTracking(response.data);
+            } catch (error) { console.error('Tracking refresh failed:', error); }
+        };
+        refreshTracking();
+        const timer = setInterval(refreshTracking, 15000);
+        return () => { isMounted = false; clearInterval(timer); };
+    }, [order._id]);
+    const status = tracking.status;
+    return <div className="mt-4 rounded-xl border border-orange-100 bg-orange-50 p-4">
+        <div className="flex justify-between items-center mb-3"><p className="font-bold text-orange-700">Live order tracking</p><span className="text-xs text-gray-500">Live updates every 15 sec</span></div>
+        <div className="flex items-center gap-1 text-xs font-semibold"><span className="bg-green-500 text-white rounded-full px-2 py-1">Ordered</span><span className="h-0.5 flex-1 bg-orange-300"></span><span className={`${['preparing','ready-for-delivery','out-for-delivery','delivered'].includes(status) ? 'bg-green-500 text-white' : 'bg-white text-gray-400'} rounded-full px-2 py-1`}>Preparing</span><span className="h-0.5 flex-1 bg-orange-300"></span><span className={`${['out-for-delivery','delivered'].includes(status) ? 'bg-blue-500 text-white' : 'bg-white text-gray-400'} rounded-full px-2 py-1`}>On the way</span><span className="h-0.5 flex-1 bg-orange-300"></span><span className={`${status === 'delivered' ? 'bg-green-500 text-white' : 'bg-white text-gray-400'} rounded-full px-2 py-1`}>Delivered</span></div>
+        {status === 'out-for-delivery' && <p className="text-sm text-blue-700 font-medium mt-3">Your delivery partner is on the way.</p>}
+        {tracking.deliveryOtp && <div className="mt-3 bg-white border border-orange-200 rounded-lg p-3"><p className="text-xs text-gray-500">Your delivery OTP. Share it with the delivery partner only after you receive the food.</p><p className="text-2xl tracking-[0.35em] font-extrabold text-orange-600 mt-1">{tracking.deliveryOtp}</p></div>}
+        {status === 'out-for-delivery' && tracking.deliveryLocation?.latitude ? <LiveDeliveryMap location={tracking.deliveryLocation} /> : status === 'out-for-delivery' && <p className="text-xs text-gray-500 mt-2">Waiting for the delivery partner to start live location sharing.</p>}
+    </div>;
 };
 // ------------------------------------------
 
@@ -41,7 +88,7 @@ const DishCard = ({ dish, onViewDetails }) => {
             className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition transform hover:-translate-y-2 cursor-pointer"
             onClick={() => onViewDetails(dish)}
         >
-            <img src={dish.image} alt={dish.name} className="w-full h-48 object-cover" />
+            <img src={foodImageUrl(dish.image)} alt={dish.name} className="w-full h-48 object-cover" />
             <div className="p-5">
                 <div className="flex items-center justify-between mb-2">
                     <h3 className="text-lg md:text-xl font-bold text-gray-800">{dish.name}</h3>
@@ -85,7 +132,7 @@ const DishDetailPage = ({ dish, onAddToCart, onBack }) => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2">
                     <div className='p-0'>
-                        <img src={dish.image} alt={dish.name} className="w-full h-80 object-cover" />
+                        <img src={foodImageUrl(dish.image)} alt={dish.name} className="w-full h-80 object-cover" />
                     </div>
                     <div className="p-4 md:p-6">
                         <div className="flex justify-between items-start mb-2">
@@ -169,6 +216,18 @@ const CustomerHeader = ({ cartCount, currentUser, onNavigate, onLogout, searchTe
                         </svg>
                     )}
                 </button>
+                {currentUser?.userType === 'customer' && <button
+                    onClick={() => onNavigate('cart')}
+                    className="md:hidden relative text-white hover:text-orange-400 transition"
+                    aria-label="Open cart"
+                >
+                    <ShoppingCart className="w-6 h-6" />
+                    {cartCount > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                            {cartCount}
+                        </span>
+                    )}
+                </button>}
                 <nav className={`${mobileMenuOpen ? 'flex' : 'hidden'} md:flex absolute md:relative top-16 md:top-0 left-0 right-0 bg-gray-800 md:bg-transparent flex-col md:flex-row items-center gap-4 md:gap-6 p-4 md:p-0 shadow-lg md:shadow-none`}>
                     <div className="relative w-full md:w-auto mb-4 md:mb-0">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -207,9 +266,14 @@ const CustomerHeader = ({ cartCount, currentUser, onNavigate, onLogout, searchTe
                             Become Seller
                         </button>
                     )}
-                    <button
+                    {!currentUser && (
+                        <button onClick={() => onNavigate('deliveryLogin')} className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-full transition text-sm w-full md:w-auto text-left md:text-center">
+                            Delivery Login
+                        </button>
+                    )}
+                    {currentUser?.userType === 'customer' && <button
                         onClick={() => onNavigate('cart')}
-                        className="relative hover:text-orange-400 transition"
+                        className="relative hover:text-orange-400 transition hidden md:block"
                     >
                         <ShoppingCart className="w-6 h-6" />
                         {cartCount > 0 && (
@@ -217,7 +281,7 @@ const CustomerHeader = ({ cartCount, currentUser, onNavigate, onLogout, searchTe
                                 {cartCount}
                             </span>
                         )}
-                    </button>
+                    </button>}
                     {currentUser && currentUser.userType === 'customer' ? (
                         <div className="flex items-center gap-3 w-full md:w-auto">
                             <span className="text-sm">{currentUser.name}</span>
@@ -240,6 +304,26 @@ const CustomerHeader = ({ cartCount, currentUser, onNavigate, onLogout, searchTe
             </div>
         </div>
     </header>
+);
+
+const LoginChoicePage = ({ onNavigate }) => (
+    <main className="min-h-screen bg-gray-100 py-12 px-4"><section className="max-w-3xl mx-auto text-center">
+        <p className="text-orange-500 font-bold tracking-widest text-sm">WELCOME TO HOME PLATE</p>
+        <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mt-2">How would you like to continue?</h1>
+        <p className="text-gray-600 mt-3">Choose your role to sign in or create a new account.</p>
+        <div className="grid md:grid-cols-3 gap-5 mt-10 text-left">
+            <button onClick={() => onNavigate('customerLogin')} className="bg-white p-6 rounded-2xl shadow-sm border hover:border-orange-400 hover:shadow-lg transition"><h2 className="text-xl font-bold text-gray-900">Customer</h2><p className="text-gray-500 mt-2">Order food, track deliveries, and review kitchens.</p><span className="block mt-5 font-bold text-orange-500">Customer login →</span></button>
+            <button onClick={() => onNavigate('sellerLogin')} className="bg-white p-6 rounded-2xl shadow-sm border hover:border-orange-400 hover:shadow-lg transition"><h2 className="text-xl font-bold text-gray-900">Seller / Chef</h2><p className="text-gray-500 mt-2">Manage your kitchen, dishes, and incoming orders.</p><span className="block mt-5 font-bold text-orange-500">Seller login →</span></button>
+            <button onClick={() => onNavigate('deliveryLogin')} className="bg-white p-6 rounded-2xl shadow-sm border hover:border-orange-400 hover:shadow-lg transition"><h2 className="text-xl font-bold text-gray-900">Delivery Partner</h2><p className="text-gray-500 mt-2">Accept pickups, share GPS, and deliver orders.</p><span className="block mt-5 font-bold text-orange-500">Delivery login →</span></button>
+        </div>
+    </section></main>
+);
+
+const DeliveryHeader = ({ currentUser, onNavigate, onLogout }) => (
+    <header className="bg-gray-800 text-white sticky top-0 z-50 shadow-lg"><div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <h1 onClick={() => onNavigate('deliveryDashboard')} className="text-xl font-bold cursor-pointer">Home Plate Delivery</h1>
+        <div className="flex items-center gap-4"><button onClick={() => onNavigate('deliveryDashboard')} className="hover:text-orange-400">Deliveries</button><span>{currentUser?.name}</span><button onClick={onLogout}><LogOut className="w-5 h-5" /></button></div>
+    </div></header>
 );
 
 // --- COMPONENT: SellerHeader ---
@@ -456,7 +540,7 @@ const CartPage = ({ cart, onUpdateQuantity, onRemoveFromCart, onNavigate, cartTo
                     <div className="space-y-4 mb-6">
                         {cart.map(item => (
                             <div key={item.cartItemId} className="bg-white rounded-xl shadow-lg p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6">
-                                <img src={item.image} alt={item.name} className="w-full md:w-24 h-48 md:h-24 rounded-lg object-cover" />
+                                <img src={foodImageUrl(item.image)} alt={item.name} className="w-full md:w-24 h-48 md:h-24 rounded-lg object-cover" />
                                 <div className="flex-1 w-full">
                                     <h3 className="text-lg md:text-xl font-bold text-gray-800">{item.name}</h3>
                                     <p className="text-orange-500 font-bold">₹{item.price} each</p>
@@ -719,6 +803,70 @@ const SellerLoginPage = ({ onLoginSuccess, onShowNotification, onNavigate }) => 
             </div>
         </div>
     );
+};
+
+const DeliveryLoginPage = ({ onLoginSuccess, onShowNotification }) => {
+    const [isSignup, setIsSignup] = useState(false);
+    const [form, setForm] = useState({ name: '', username: '', email: '', phone: '', password: '' });
+    const submit = async (e) => {
+        e.preventDefault();
+        try {
+            if (isSignup) {
+                await authAPI.deliveryRegister(form);
+                onShowNotification('Delivery account created. Please log in.');
+                setIsSignup(false);
+            } else {
+                const response = await authAPI.deliveryLogin({ username: form.username, password: form.password });
+                onLoginSuccess({ ...response.data.deliveryPerson, userType: 'delivery' }, response.data.token);
+                onShowNotification('Delivery login successful!');
+            }
+        } catch (error) { onShowNotification(error.response?.data?.error || 'Could not continue.'); }
+    };
+    return <div className="bg-gray-100 min-h-screen py-12"><div className="max-w-md mx-auto bg-white rounded-xl shadow-lg p-8">
+        <h2 className="text-3xl font-bold text-orange-500 text-center mb-6">{isSignup ? 'Delivery Registration' : 'Delivery Login'}</h2>
+        <form onSubmit={submit} className="space-y-4">
+            {isSignup && <><input name="name" placeholder="Full name" value={form.name} onChange={e => setForm({...form, name:e.target.value})} className="w-full p-3 border rounded" required /><input name="email" type="email" placeholder="Email" value={form.email} onChange={e => setForm({...form, email:e.target.value})} className="w-full p-3 border rounded" required /><input name="phone" placeholder="Phone" value={form.phone} onChange={e => setForm({...form, phone:e.target.value})} className="w-full p-3 border rounded" required /></>}
+            <input name="username" placeholder="Username" value={form.username} onChange={e => setForm({...form, username:e.target.value})} className="w-full p-3 border rounded" required />
+            <input name="password" type="password" placeholder="Password" value={form.password} onChange={e => setForm({...form, password:e.target.value})} className="w-full p-3 border rounded" required />
+            <button className="w-full bg-orange-500 text-white py-3 rounded-lg font-semibold">{isSignup ? 'Create Delivery Account' : 'Login'}</button>
+        </form>
+        <button onClick={() => setIsSignup(!isSignup)} className="w-full mt-4 text-orange-500">{isSignup ? 'Already registered? Login' : 'New delivery person? Register'}</button>
+    </div></div>;
+};
+
+const DeliveryDashboard = ({ onShowNotification }) => {
+    const [available, setAvailable] = useState([]); const [mine, setMine] = useState([]); const [isLoading, setIsLoading] = useState(true); const [trackingOrderId, setTrackingOrderId] = useState(null); const watchIdRef = useRef(null);
+    const load = async () => { setIsLoading(true); try { const [a, m] = await Promise.all([deliveryAPI.availableOrders(), deliveryAPI.myOrders()]); setAvailable(a.data); setMine(m.data); } catch { onShowNotification('Could not load delivery orders.'); } finally { setIsLoading(false); } };
+    useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const accept = async (id) => { try { await deliveryAPI.acceptOrder(id); onShowNotification('Order accepted.'); load(); } catch (e) { onShowNotification(e.response?.data?.error || 'Could not accept order.'); } };
+    const delivered = async (id) => { const otp = window.prompt('Ask the customer for their 6-digit delivery OTP, then enter it here:'); if (!otp) return; try { await deliveryAPI.markDelivered(id, otp.trim()); onShowNotification('OTP verified. Order delivered.'); load(); } catch (error) { onShowNotification(error.response?.data?.error || 'Could not verify delivery OTP.'); } };
+    const stopTracking = () => {
+        if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null; setTrackingOrderId(null); onShowNotification('Live location sharing stopped.');
+    };
+    const shareLocation = (id) => {
+        if (!navigator.geolocation) return onShowNotification('Location sharing is not supported by this browser.');
+        if (trackingOrderId === id) return stopTracking();
+        if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
+        const watchId = navigator.geolocation.watchPosition(async ({ coords }) => {
+            try { await deliveryAPI.updateLocation(id, coords.latitude, coords.longitude); }
+            catch { onShowNotification('Could not update live location.'); }
+        }, () => { watchIdRef.current = null; setTrackingOrderId(null); onShowNotification('Allow location permission to start live tracking.'); }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+        watchIdRef.current = watchId; setTrackingOrderId(id); onShowNotification('Live tracking started. Keep this page open while delivering.');
+    };
+    useEffect(() => () => { if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current); }, []);
+    const active = mine.filter(order => order.status === 'out-for-delivery').length;
+    const completed = mine.filter(order => order.status === 'delivered').length;
+    const OrderCard = ({ order, action, isActive }) => <article className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition p-5">
+        <div className="flex justify-between gap-3 border-b pb-4 mb-4"><div><p className="text-xs font-bold tracking-widest text-gray-400">ORDER #{order._id.slice(-6).toUpperCase()}</p><h3 className="font-bold text-lg text-gray-800 mt-1">{order.items.map(i => `${i.name} × ${i.quantity}`).join(', ')}</h3></div><span className={`h-fit px-3 py-1 rounded-full text-xs font-bold ${isActive ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>{isActive ? 'OUT FOR DELIVERY' : 'READY FOR PICKUP'}</span></div>
+        <div className="grid md:grid-cols-2 gap-4 text-sm"><div className="bg-orange-50 rounded-xl p-4"><p className="font-bold text-orange-600 mb-1">PICKUP</p><p className="font-semibold">{order.sellerId?.businessName}</p><p className="text-gray-600">{order.sellerId?.address || 'Kitchen address unavailable'}</p><p className="text-gray-600 mt-1">{order.sellerId?.phone || ''}</p></div><div className="bg-blue-50 rounded-xl p-4"><p className="font-bold text-blue-600 mb-1">DROP-OFF</p><p className="font-semibold">{order.customerId?.name}</p><p className="text-gray-600">{order.deliveryAddress}</p><p className="text-gray-600 mt-1">{order.customerId?.phone || ''}</p></div></div>
+        <div className="flex justify-between items-center mt-4"><span className="font-bold text-gray-700">₹{order.totalAmount}</span>{action}</div>
+    </article>;
+    return <main className="min-h-screen bg-slate-50 py-8 md:py-12"><div className="max-w-6xl mx-auto px-4 md:px-6">
+        <section className="bg-gradient-to-r from-orange-500 to-amber-400 text-white rounded-3xl p-6 md:p-9 shadow-lg mb-8"><div className="flex flex-col md:flex-row md:items-center justify-between gap-5"><div><p className="font-semibold text-orange-100">HOME PLATE DELIVERY PARTNER</p><h1 className="text-3xl md:text-4xl font-extrabold mt-1">Deliver smarter, earn better.</h1><p className="mt-2 text-orange-50">Accept prepared orders, navigate pickup details, and confirm each delivery.</p></div><button onClick={load} className="bg-white text-orange-600 font-bold px-5 py-3 rounded-xl hover:bg-orange-50">Refresh orders</button></div></section>
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"><div className="bg-white rounded-2xl p-5 shadow-sm border"><p className="text-gray-500 text-sm">Available pickups</p><p className="text-3xl font-extrabold text-orange-500 mt-1">{available.length}</p></div><div className="bg-white rounded-2xl p-5 shadow-sm border"><p className="text-gray-500 text-sm">Active deliveries</p><p className="text-3xl font-extrabold text-blue-600 mt-1">{active}</p></div><div className="bg-white rounded-2xl p-5 shadow-sm border"><p className="text-gray-500 text-sm">Completed deliveries</p><p className="text-3xl font-extrabold text-green-600 mt-1">{completed}</p></div></section>
+        {isLoading ? <div className="text-center py-16 text-gray-500">Loading delivery operations...</div> : <div className="grid lg:grid-cols-2 gap-8"><section><div className="flex items-center justify-between mb-4"><div><h2 className="text-2xl font-bold text-gray-900">Available pickups</h2><p className="text-gray-500">Orders prepared by kitchens</p></div><span className="bg-orange-100 text-orange-700 font-bold px-3 py-1 rounded-full">{available.length}</span></div><div className="space-y-4">{available.length ? available.map(order => <OrderCard key={order._id} order={order} action={<button onClick={() => accept(order._id)} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl font-bold">Accept delivery</button>} />) : <div className="bg-white border border-dashed rounded-2xl p-10 text-center"><Package className="w-12 h-12 text-orange-300 mx-auto mb-3" /><h3 className="font-bold text-gray-700">All caught up</h3><p className="text-gray-500 text-sm mt-1">New pickup requests will appear here.</p></div>}</div></section><section><div className="flex items-center justify-between mb-4"><div><h2 className="text-2xl font-bold text-gray-900">My deliveries</h2><p className="text-gray-500">Orders you have accepted</p></div><span className="bg-blue-100 text-blue-700 font-bold px-3 py-1 rounded-full">{mine.length}</span></div><div className="space-y-4">{mine.length ? mine.map(order => <OrderCard key={order._id} order={order} isActive={order.status === 'out-for-delivery'} action={order.status === 'out-for-delivery' ? <div className="flex gap-2"><button onClick={() => shareLocation(order._id)} className={`${trackingOrderId === order._id ? 'bg-blue-600 text-white' : 'border border-blue-500 text-blue-600'} px-3 py-2 rounded-xl font-bold`}>{trackingOrderId === order._id ? 'Stop tracking' : 'Start live tracking'}</button><button onClick={() => { if (trackingOrderId === order._id) stopTracking(); delivered(order._id); }} className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-xl font-bold">Mark delivered</button></div> : <span className="font-bold text-green-600">Delivered</span>} />) : <div className="bg-white border border-dashed rounded-2xl p-10 text-center"><Clock className="w-12 h-12 text-blue-300 mx-auto mb-3" /><h3 className="font-bold text-gray-700">No active deliveries</h3><p className="text-gray-500 text-sm mt-1">Accept a pickup to start a delivery.</p></div>}</div></section></div>}
+    </div></main>;
 };
 
 // --- COMPONENT: SellerSignupPage ---
@@ -1239,10 +1387,10 @@ const SellerOrdersPage = ({ onShowNotification }) => {
                                             )}
                                             {order.status === 'preparing' && (
                                                 <button
-                                                    onClick={() => handleUpdateStatus(order._id, 'delivered')}
+                                                    onClick={() => handleUpdateStatus(order._id, 'ready-for-delivery')}
                                                     className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
                                                 >
-                                                    Complete
+                                                    Ready for Delivery
                                                 </button>
                                             )}
                                         </td>
@@ -1301,6 +1449,7 @@ const CustomerOrdersPage = ({ onShowNotification, onReviewOrder }) => {
                                 <p className='text-gray-700'>{order.items.map(i => `${i.name} x${i.quantity}`).join(', ')}</p>
                                 <p className='text-gray-900 font-semibold'>Total: ₹{order.totalAmount}</p>
                                 {order.specialInstructions && <p className='text-xs italic text-gray-500'>Instructions: {order.specialInstructions}</p>}
+                                <OrderTrackingCard order={order} />
                                 
                                 {order.status === 'delivered' && (
                                     <button 
@@ -1564,20 +1713,34 @@ function App() {
     useEffect(() => {
         const token = localStorage.getItem('authToken');
         const user = localStorage.getItem('currentUser');
+        const savedCart = localStorage.getItem('homeplateCart');
         if (token && user) {
             setCurrentUser(JSON.parse(user));
+        }
+        if (savedCart) {
+            try {
+                setCart(JSON.parse(savedCart));
+            } catch {
+                localStorage.removeItem('homeplateCart');
+            }
         }
         fetchDishes();
     }, []);
 
+    useEffect(() => {
+        localStorage.setItem('homeplateCart', JSON.stringify(cart));
+    }, [cart]);
+
     const handleLoginSuccess = (user, token) => {
-        const userWithType = { ...user, userType: user.businessName ? 'seller' : 'customer' };
+        const userWithType = { ...user, userType: user.userType || (user.businessName ? 'seller' : 'customer') };
         localStorage.setItem('authToken', token);
         localStorage.setItem('currentUser', JSON.stringify(userWithType));
         setCurrentUser(userWithType);
         
         if (userWithType.userType === 'seller') {
             setCurrentPage('sellerDashboard');
+        } else if (userWithType.userType === 'delivery') {
+            setCurrentPage('deliveryDashboard');
         } else {
             setCurrentPage('home');
         }
@@ -1600,6 +1763,17 @@ function App() {
 
     // --- CART FUNCTIONS ---
     const addToCart = (dish, quantity = 1, instructions = '') => {
+        if (!currentUser || currentUser.userType !== 'customer') {
+            showNotification('Please log in as a customer before adding food to your cart.');
+            setCurrentPage('customerLogin');
+            return;
+        }
+        const dishSellerId = String(dish.sellerId?._id || dish.sellerId);
+        const cartSellerId = cart.length ? String(cart[0].sellerId?._id || cart[0].sellerId) : null;
+        if (cartSellerId && cartSellerId !== dishSellerId) {
+            showNotification('Please place the current kitchen order before adding dishes from another kitchen.');
+            return;
+        }
         const cartItemId = `${dish._id}-${Date.now()}`; 
         const existingItem = cart.find(item => item._id === dish._id && item.instructions === instructions);
 
@@ -1634,10 +1808,22 @@ function App() {
     
     const handlePlaceOrder = () => {
         setCart([]);
+        localStorage.removeItem('homeplateCart');
     };
 
     // --- NAVIGATION HANDLERS ---
     const handleNavigate = (page) => {
+        const protectedPages = {
+            sellerDashboard: 'seller', addDish: 'seller', sellerOrders: 'seller', sellerAbout: 'seller',
+            deliveryDashboard: 'delivery', customerOrders: 'customer', checkout: 'customer', cart: 'customer'
+        };
+        const requiredRole = protectedPages[page];
+        if (requiredRole && (!currentUser || currentUser.userType !== requiredRole)) {
+            showNotification(`Please log in as a ${requiredRole === 'delivery' ? 'delivery partner' : requiredRole} first.`);
+            setCurrentPage(requiredRole === 'seller' ? 'sellerLogin' : requiredRole === 'delivery' ? 'deliveryLogin' : 'customerLogin');
+            setMobileMenuOpen(false);
+            return;
+        }
         setCurrentPage(page);
         setMobileMenuOpen(false);
     };
@@ -1689,6 +1875,8 @@ function App() {
                     mobileMenuOpen={mobileMenuOpen}
                     onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
                 />
+            ) : currentUser?.userType === 'delivery' ? (
+                <DeliveryHeader currentUser={currentUser} onNavigate={handleNavigate} onLogout={handleLogout} />
             ) : (
                 <CustomerHeader
                     currentUser={currentUser}
@@ -1735,12 +1923,21 @@ function App() {
                     onShowNotification={showNotification}
                 />
             )}
+            {currentPage === 'loginChoice' && (
+                <LoginChoicePage onNavigate={handleNavigate} />
+            )}
             {currentPage === 'sellerLogin' && (
                 <SellerLoginPage
                     onLoginSuccess={handleLoginSuccess}
                     onShowNotification={showNotification}
                     onNavigate={handleNavigate}
                 />
+            )}
+            {currentPage === 'deliveryLogin' && (
+                <DeliveryLoginPage onLoginSuccess={handleLoginSuccess} onShowNotification={showNotification} />
+            )}
+            {currentPage === 'deliveryDashboard' && (
+                <DeliveryDashboard onShowNotification={showNotification} />
             )}
             {currentPage === 'sellerSignup' && (
                 <SellerSignupPage

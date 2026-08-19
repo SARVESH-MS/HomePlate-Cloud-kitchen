@@ -1,0 +1,11 @@
+# Dependencies and generated build output
+node_modules/
+build/
+
+# Private environment values
+.env
+.env.local
+.env.*.local
+
+# Local upload files created while running the backend
+backend/uploads/imageFile-*

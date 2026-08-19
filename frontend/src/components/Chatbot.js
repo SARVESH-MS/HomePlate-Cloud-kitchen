@@ -1,6 +1,6 @@
 // frontend/src/components/Chatbot.js
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MessageCircle, X, Send, Bot } from 'lucide-react';
 import { chatbotAPI } from '../services/api'; // Import the API
 
@@ -12,9 +12,33 @@ const Chatbot = () => {
     { role: 'bot', content: 'Hi! I am the Home Plate assistant. How can I help you today?' }
   ]);
 
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (!localStorage.getItem('authToken')) return;
+      try {
+        const response = await chatbotAPI.getHistory();
+        if (response.data.messages.length) {
+          setMessages(response.data.messages.map((message) => ({
+            role: message.role === 'assistant' ? 'bot' : 'user',
+            content: message.content
+          })));
+        }
+      } catch (error) {
+        // The welcome message remains available when the user is logged out
+        // or when stored chat history cannot be loaded.
+        console.error('Unable to load chatbot history:', error);
+      }
+    };
+    loadHistory();
+  }, []);
+
   const handleSend = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
+    if (!localStorage.getItem('authToken')) {
+      setMessages(prev => [...prev, { role: 'bot', content: 'Please log in first to use the Home Plate assistant.' }]);
+      return;
+    }
 
     const userMessage = { role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
@@ -28,7 +52,8 @@ const Chatbot = () => {
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       console.error("Chatbot error:", error);
-      const errorMessage = { role: 'bot', content: 'Sorry, I am having trouble connecting. Please try again later.' };
+      const reason = error.response?.data?.error;
+      const errorMessage = { role: 'bot', content: reason ? `Chatbot error: ${reason}` : 'Chatbot cannot reach the backend. Start or restart the backend on port 5000, then try again.' };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
