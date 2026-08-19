@@ -201,7 +201,7 @@ const CustomerHeader = ({ cartCount, currentUser, onNavigate, onLogout, searchTe
         <div className="container mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
                 <h1
-                    className="text-xl md:text-2xl font-bold cursor-pointer hover:text-orange-400 transition"
+                    className="text-lg md:text-xl lg:text-2xl font-bold whitespace-nowrap shrink-0 cursor-pointer hover:text-orange-400 transition"
                     onClick={() => onNavigate('home')}
                 >
                     Home Plate
@@ -228,8 +228,8 @@ const CustomerHeader = ({ cartCount, currentUser, onNavigate, onLogout, searchTe
                         </span>
                     )}
                 </button>}
-                <nav className={`${mobileMenuOpen ? 'flex' : 'hidden'} md:flex absolute md:relative top-16 md:top-0 left-0 right-0 bg-gray-800 md:bg-transparent flex-col md:flex-row items-center gap-4 md:gap-6 p-4 md:p-0 shadow-lg md:shadow-none`}>
-                    <div className="relative w-full md:w-auto mb-4 md:mb-0">
+                <nav className={`${mobileMenuOpen ? 'flex' : 'hidden'} md:flex absolute md:relative top-16 md:top-0 left-0 right-0 bg-gray-800 md:bg-transparent flex-col md:flex-row md:flex-nowrap items-center gap-4 md:gap-3 lg:gap-5 p-4 md:p-0 shadow-lg md:shadow-none`}>
+                    <div className="relative w-full md:w-auto mb-4 md:mb-0 shrink">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                         <input
                             type="text"
@@ -237,37 +237,37 @@ const CustomerHeader = ({ cartCount, currentUser, onNavigate, onLogout, searchTe
                             value={searchTerm}
                             onChange={(e) => onSearchChange(e.target.value)}
                             onFocus={() => onNavigate('menu')}
-                            className="pl-10 pr-4 py-2 rounded-full bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 w-full md:w-64"
+                            className="pl-10 pr-3 py-2 rounded-full bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 w-full md:w-44 lg:w-64"
                         />
                     </div>
                     <button
                         onClick={() => onNavigate('home')}
-                        className="hover:text-orange-400 transition w-full md:w-auto text-left md:text-center"
+                        className="hover:text-orange-400 transition whitespace-nowrap w-full md:w-auto text-left md:text-center"
                     >
                         Home
                     </button>
                     <button
                         onClick={() => onNavigate('menu')}
-                        className="hover:text-orange-400 transition w-full md:w-auto text-left md:text-center"
+                        className="hover:text-orange-400 transition whitespace-nowrap w-full md:w-auto text-left md:text-center"
                     >
                         Menu
                     </button>
                     <button
                         onClick={() => onNavigate('customerOrders')}
-                        className="hover:text-orange-400 transition w-full md:w-auto text-left md:text-center"
+                        className="hover:text-orange-400 transition whitespace-nowrap w-full md:w-auto text-left md:text-center"
                     >
                         My Orders
                     </button>
                     {!currentUser && (
                         <button
                             onClick={() => onNavigate('sellerSignup')}
-                            className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-full transition text-sm w-full md:w-auto"
+                            className="bg-orange-500 hover:bg-orange-600 px-3 lg:px-4 py-2 rounded-full transition text-sm whitespace-nowrap w-full md:w-auto"
                         >
                             Become Seller
                         </button>
                     )}
                     {!currentUser && (
-                        <button onClick={() => onNavigate('deliveryLogin')} className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-full transition text-sm w-full md:w-auto text-left md:text-center">
+                        <button onClick={() => onNavigate('deliveryLogin')} className="bg-orange-500 hover:bg-orange-600 px-3 lg:px-4 py-2 rounded-full transition text-sm whitespace-nowrap w-full md:w-auto text-left md:text-center">
                             Delivery Login
                         </button>
                     )}
@@ -283,7 +283,7 @@ const CustomerHeader = ({ cartCount, currentUser, onNavigate, onLogout, searchTe
                         )}
                     </button>}
                     {currentUser && currentUser.userType === 'customer' ? (
-                        <div className="flex items-center gap-3 w-full md:w-auto">
+                        <div className="flex items-center gap-3 w-full md:w-auto whitespace-nowrap">
                             <span className="text-sm">{currentUser.name}</span>
                             <button
                                 onClick={onLogout}
@@ -295,7 +295,7 @@ const CustomerHeader = ({ cartCount, currentUser, onNavigate, onLogout, searchTe
                     ) : (
                         <button
                             onClick={() => onNavigate('customerLogin')}
-                            className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-full transition w-full md:w-auto"
+                            className="bg-orange-500 hover:bg-orange-600 px-3 lg:px-4 py-2 rounded-full transition whitespace-nowrap w-full md:w-auto"
                         >
                             Login
                         </button>
@@ -334,7 +334,7 @@ const SellerHeader = ({ currentUser, onNavigate, onLogout, mobileMenuOpen, onTog
                 <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-8">
                     <div className="text-gray-400 text-xs md:text-sm">Cloud Kitchen - Seller Dashboard</div>
                     <h1
-                        className="text-xl md:text-2xl font-bold cursor-pointer hover:text-orange-400 transition"
+                    className="text-lg md:text-xl lg:text-2xl font-bold whitespace-nowrap cursor-pointer hover:text-orange-400 transition"
                         onClick={() => onNavigate('sellerDashboard')}
                     >
                         Home Plate Seller
@@ -350,33 +350,33 @@ const SellerHeader = ({ currentUser, onNavigate, onLogout, mobileMenuOpen, onTog
                         </svg>
                     )}
                 </button>
-                <nav className={`${mobileMenuOpen ? 'flex' : 'hidden'} md:flex absolute md:relative top-16 md:top-0 left-0 right-0 bg-gray-800 md:bg-transparent flex-col md:flex-row items-center gap-4 md:gap-6 p-4 md:p-0 shadow-lg md:shadow-none`}>
+                <nav className={`${mobileMenuOpen ? 'flex' : 'hidden'} md:flex absolute md:relative top-16 md:top-0 left-0 right-0 bg-gray-800 md:bg-transparent flex-col md:flex-row md:flex-nowrap items-center gap-4 md:gap-3 lg:gap-5 p-4 md:p-0 shadow-lg md:shadow-none`}>
                     <button
                         onClick={() => onNavigate('sellerDashboard')}
-                        className="hover:text-orange-400 transition w-full md:w-auto text-left md:text-center"
+                        className="hover:text-orange-400 transition whitespace-nowrap w-full md:w-auto text-left md:text-center"
                     >
                         Dashboard
                     </button>
                     <button
                         onClick={() => onNavigate('addDish')}
-                        className="hover:text-orange-400 transition w-full md:w-auto text-left md:text-center"
+                        className="hover:text-orange-400 transition whitespace-nowrap w-full md:w-auto text-left md:text-center"
                     >
                         Add Dishes
                     </button>
                     <button
                         onClick={() => onNavigate('sellerOrders')}
-                        className="hover:text-orange-400 transition w-full md:w-auto text-left md:text-center"
+                        className="hover:text-orange-400 transition whitespace-nowrap w-full md:w-auto text-left md:text-center"
                     >
                         Orders
                     </button>
                     <button
                         onClick={() => onNavigate('sellerAbout')}
-                        className="hover:text-orange-400 transition w-full md:w-auto text-left md:text-center"
+                        className="hover:text-orange-400 transition whitespace-nowrap w-full md:w-auto text-left md:text-center"
                     >
                         Profile
                     </button>
                     {currentUser && (
-                        <div className="flex items-center gap-3 w-full md:w-auto">
+                        <div className="flex items-center gap-3 w-full md:w-auto whitespace-nowrap">
                             <span className="text-sm">{currentUser.name}</span>
                             <button
                                 onClick={onLogout}
@@ -422,7 +422,7 @@ const HomePage = ({ onNavigate, dishes, onViewDetails, cart }) => {
         <div>
             {/* --- THIS SECTION IS UPDATED (REQUEST #6) --- */}
             <section 
-                className="relative text-white py-12 md:py-20 bg-cover bg-center"
+                className="relative text-white py-10 lg:py-16 2xl:py-20 bg-cover bg-center"
                 style={{ backgroundImage: 'url(https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg)' }}
             >
                 {/* Dark overlay */}
@@ -430,11 +430,11 @@ const HomePage = ({ onNavigate, dishes, onViewDetails, cart }) => {
                 
                 {/* Content */}
                 <div className="container mx-auto px-4 md:px-6 text-center relative z-10">
-                    <h1 className="text-3xl md:text-5xl font-bold mb-4">Delicious Food Delivered</h1>
-                    <p className="text-lg md:text-xl mb-8">Order from the best restaurants and cloud kitchens in your area</p>
+                    <h1 className="text-3xl lg:text-4xl 2xl:text-5xl font-bold mb-4">Delicious Food Delivered</h1>
+                    <p className="text-base lg:text-lg 2xl:text-xl mb-8">Order from the best restaurants and cloud kitchens in your area</p>
                     <button 
                         onClick={() => onNavigate('menu')}
-                        className="bg-orange-500 text-white px-6 md:px-8 py-3 rounded-full font-semibold hover:bg-orange-600 transition transform hover:scale-105"
+                        className="bg-orange-500 text-white px-6 lg:px-8 py-3 rounded-full font-semibold hover:bg-orange-600 transition transform hover:scale-105"
                     >
                         Order Now
                     </button>
@@ -1854,7 +1854,7 @@ function App() {
     return (
         <div className="min-h-screen bg-gray-100">
             {notification && (
-                <div className="fixed top-4 right-4 bg-green-500 text-white px-4 md:px-6 py-3 rounded-lg shadow-lg z-[60] animate-slideIn text-sm md:text-base">
+                <div className="fixed top-24 right-4 max-w-[calc(100vw-2rem)] bg-green-500 text-white px-4 md:px-6 py-3 rounded-lg shadow-lg z-[60] animate-slideIn text-sm md:text-base">
                     {notification}
                 </div>
             )}

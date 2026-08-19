@@ -76,6 +76,40 @@ Seed complete: users, sellers, dishes, orders and reviews are ready.
 
 This adds sample cloud kitchens, dishes, a customer, an order, and a review to the `homeplate` database. It is safe to run again; it updates the same sample records instead of duplicating them.
 
+### Sample login accounts created by `npm run seed`
+
+Use these only for local testing or a demo database. Do **not** use these credentials for a real production app.
+
+| Role | Name / kitchen | Username or email | Password |
+| --- | --- | --- | --- |
+| Customer | Priya | `priya@example.com` | `Homeplate@123` |
+| Seller | Indhu's Kitchen | `indhu05` | `Homeplate@123` |
+| Seller | Velu's Kitchen | `velu2` | `Homeplate@123` |
+| Seller | Anitha's Meals | `anitha01` | `Homeplate@123` |
+
+Customer login uses the **email**. Seller login uses the **username**. A delivery partner is not created by the seed command; open **Delivery Login** in the app and register a delivery account first.
+
+Never add real users' passwords, MongoDB connection strings, JWT secrets, or API keys to this README or to GitHub.
+
+### Delivery-person login
+
+Delivery people are created from the **Delivery Login** page, not by `npm run seed`.
+
+1. Open the app and click **Delivery Login**.
+2. Choose **Register**.
+3. Enter the delivery person's name, username, email, phone number, and a password.
+4. Log in using the same **username** and password.
+
+The account is stored in the `homeplate.deliverypeople` collection. The `password` field visible in MongoDB Atlas starts with `$2...`; it is encrypted and cannot be used as the login password. If a delivery person forgets their password in a demo, delete that test account and register it again with a new password.
+
+#### Current demo delivery account
+
+| Role | Username | Password |
+| --- | --- | --- |
+| Delivery person | `SARVESH__` | `123` |
+
+This account is for demonstration only. Change its password or delete the account before making the project public.
+
 ### 6. Start the backend
 
 Still in the backend terminal, run:
